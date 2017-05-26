@@ -1,0 +1,69 @@
+## Drone
+## ref: https://hub.docker.com/r/drone/drone
+##
+image:
+  registry: docker.io
+  org: drone
+  name: drone
+  tag: 0.7.1
+  pullPolicy: Always
+
+service:
+  http:
+    externalPort: 80
+    internalPort: 80
+  type: ClusterIP
+
+server:
+  # Drone server configuration. Values in here get injected as environment variables.
+  # See http://readme.drone.io/admin/installation-reference#server-options for a list of possible values.
+  env:
+    DRONE_DEBUG: "true"
+    DRONE_GITHUB: "true"
+    DRONE_GITHUB_SKIP_VERIFY: "false"
+    DRONE_OPEN: "false"
+    DRONE_ADMIN: "ipedrazas"
+    DRONE_DATABASE_DRIVER: "postgres"
+    # DRONE_DATABASE_DRIVER: "sqlite3"
+    
+  resources:
+    requests:
+      memory: 32Mi
+      cpu: 40m
+    limits:
+      memory: 1Gi
+      cpu: 1
+
+agent:
+  # Drone agent configuration. Values in here get injected as environment variables.
+  # See http://readme.drone.io/admin/installation-reference#server-options for a list of possible values.
+  env:
+    DRONE_DEBUG: "true"
+    DOCKER_API_VERSION: "1.23"
+    DRONE_PLUGIN_PRIVILEGED: "plugins/*,ipedrazas/*,quay.io/ipedrazas/*"
+  resources:
+    requests:
+      memory: 32Mi
+      cpu: 40m
+    limits:
+      memory: 2Gi
+      cpu: 1
+
+database:
+  datasource: "postgres://root:pa55word@127.0.0.1:5432/postgres?sslmode=disable"
+  
+github:
+  secret: xxx
+  client: xxx
+
+ingress:
+  enabled: true
+  host: "build.kube.camp"
+  path: "/"
+  ssl: 
+    enabled: true
+
+
+tls:
+  crt: xxx
+  key: xxx

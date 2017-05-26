@@ -1,0 +1,49 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: {{ template "fullname" . }}-agent
+  labels:
+    app: {{ template "fullname" . }}-agent
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: "{{ .Release.Name }}"
+    heritage: "{{ .Release.Service }}"
+    version: "{{ .Values.image.tag }}"
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: {{ template "fullname" . }}-agent
+        chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+        release: "{{ .Release.Name }}"
+        heritage: "{{ .Release.Service }}"
+        version: "{{ .Values.image.tag }}"
+    spec:
+      containers:
+      - name: {{ template "fullname" . }}-agent
+        image: "{{ .Values.image.registry }}/{{ .Values.image.org }}/{{ .Values.image.name }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        args:
+          - "agent"
+        env:
+          - name: DRONE_SERVER
+            value: ws://{{ template "fullname" . }}/ws/broker
+          - name: DRONE_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: {{ template "fullname" . }}
+                key: secret
+          {{ range $key, $value := .Values.agent.env }}
+          - name: {{ $key }}
+            value: {{ $value | quote }}
+          {{ end }}
+        resources:
+{{ toYaml .Values.agent.resources | indent 10 }}
+        volumeMounts:
+          # Enables Docker in Docker
+          - mountPath: /var/run/docker.sock
+            name: docker-socket
+      volumes:
+        - name: docker-socket
+          hostPath:
+            path: /var/run/docker.sock

@@ -1,0 +1,83 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: {{ template "fullname" . }}-server
+  labels:
+    app: {{ template "fullname" . }}-server
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: "{{ .Release.Name }}"
+    heritage: "{{ .Release.Service }}"
+    version: "{{ .Values.image.tag }}"
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: {{ template "fullname" . }}-server
+        chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+        release: "{{ .Release.Name }}"
+        heritage: "{{ .Release.Service }}"
+        version: "{{ .Values.image.tag }}"
+    spec:
+      containers:
+      - image: nginx:alpine
+        imagePullPolicy: Always
+        name: nginx
+        ports:
+          - containerPort: 80
+            protocol: TCP
+        volumeMounts:
+          - name: config-nginx
+            readOnly: true
+            mountPath: /etc/nginx/conf.d      
+      - name: {{ template "fullname" . }}-server
+        image: "{{ .Values.image.registry }}/{{ .Values.image.org }}/{{ .Values.image.name }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        env:
+          - name: DRONE_DATABASE_DATASOURCE
+            valueFrom:
+              secretKeyRef:
+                name: {{ template "fullname" . }}
+                key: datasource
+          - name: DRONE_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: {{ template "fullname" . }}
+                key: secret
+          - name: DRONE_GITHUB_CLIENT
+            valueFrom:
+              secretKeyRef:
+                name: {{ template "fullname" . }}
+                key: githubClient
+          - name: DRONE_GITHUB_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: {{ template "fullname" . }}
+                key: githubSecret
+          {{ range $key, $value := .Values.server.env }}
+          - name: {{ $key }}
+            value: {{ $value | quote }}
+          {{ end }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.service.http.internalPort }}
+        readinessProbe:
+          httpGet:
+            path: /
+            port: http
+        resources:
+{{ toYaml .Values.server.resources | indent 10 }}
+        volumeMounts:
+          # Enables Docker in Docker
+          - mountPath: /var/run/docker.sock
+            name: docker-socket
+      volumes:
+        - name: docker-socket
+          hostPath:
+            path: /var/run/docker.sock
+        - name: config-nginx
+          configMap:
+            name: {{ template "fullname" . }}
+            items:
+            - key: nginx.conf
+              path: default.conf
