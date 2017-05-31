@@ -63,7 +63,6 @@ ingress:
   ssl: 
     enabled: true
 
-
 tls:
   crt: xxx
   key: xxx
